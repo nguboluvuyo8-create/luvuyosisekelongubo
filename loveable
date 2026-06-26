@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deskwork — Your AI Work Assistant</title>
+<meta name="description" content="Draft emails, summarize meeting notes, and plan your week — all in one workspace.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================
+   Deskwork — design tokens
+=========================================================== */
+:root {
+  /* Color */
+  --ink:        #11151C;
+  --ink-soft:   #1B2230;
+  --paper:      #FAF8F4;
+  --paper-dim:  #F1EEE6;
+  --line:       #E4E0D6;
+  --line-soft:  #ECE9E0;
+  --text-main:  #1D2129;
+  --text-mute:  #5B6472;
+  --text-faint: #8B9099;
+  --blue:       #2B5BA8;
+  --blue-deep:  #1F4480;
+  --blue-tint:  #E8EEF8;
+  --amber:      #C97A1F;
+  --amber-tint: #FBEEDC;
+  --mint:       #2F7D6F;
+  --mint-tint:  #E4F1EC;
+  --white:      #FFFFFF;
+
+  /* Type */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", monospace;
+
+  /* Layout */
+  --sidebar-w: 248px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
+  --shadow-card: 0 1px 2px rgba(17,21,28,0.04), 0 8px 24px -8px rgba(17,21,28,0.08);
+  --shadow-pop: 0 4px 12px -2px rgba(17,21,28,0.12), 0 16px 40px -12px rgba(17,21,28,0.14);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+textarea, input {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* ===========================================================
+   Shell
+=========================================================== */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--ink);
+  color: #C9CDD6;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px 22px 6px;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.wordmark-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(150deg, var(--blue), var(--blue-deep));
+  color: white;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wordmark-text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  color: #F4F2EC;
+  letter-spacing: 0.2px;
+}
+
+.sidebar-close { display: none; }
+
+.nav-group {
+  margin-top: 6px;
+  margin-bottom: 18px;
+}
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #6E7585;
+  margin: 0 10px 8px 10px;
+}
+
+.nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: none;
+  background: transparent;
+  color: #B8BCC6;
+  font-size: 14.5px;
+  font-weight: 500;
+  text-align: left;
+  padding: 10px 10px;
+  border-radius: var(--radius-s);
+  margin-bottom: 2px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-icon { flex-shrink: 0; opacity: 0.9; }
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: #F0F1F4;
+}
+
+.nav-item.is-active {
+  background: rgba(43,91,168,0.22);
+  color: #EDF2FB;
+}
+
+.nav-item.is-active .nav-icon { color: #7FA6E0; }
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px;
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, var(--amber), #A8631A);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-meta { display: flex; flex-direction: column; line-height: 1.25; }
+.user-name { font-size: 13.5px; font-weight: 600; color: #F0F1F4; }
+.user-role { font-size: 12px; color: #888EA0; }
+
+.sidebar-scrim {
+  display: none;
+}
+
+/* ---------- Main ---------- */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-bar { display: none; }
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 30px 36px 18px 36px;
+}
+
+.topbar-heading h1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--ink);
+}
+
+.topbar-heading p {
+  margin: 0;
+  color: var(--text-mute);
+  font-size: 14.5px;
+}
+
+.clock-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 9px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+#clockTime {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.clock-date {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 1px;
+}
+
+/* ---------- Views ---------- */
+.view {
+  display: none;
+  padding: 6px 36px 40px 36px;
+  flex: 1;
+}
+
+.view.is-active { display: block; }
+
+/* ---------- Overview ---------- */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.tool-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 22px 22px 20px 22px;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.tool-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-pop);
+  border-color: #D7D2C4;
+}
+
+.tool-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.icon-tint-a { background: var(--blue-tint); color: var(--blue-deep); }
+.icon-tint-b { background: var(--mint-tint); color: var(--mint); }
+.icon-tint-c { background: var(--amber-tint); color: var(--amber); }
+
+.tool-card h3 {
+  font-family: var(--font-display);
+  font-size: 17.5px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--ink);
+}
+
+.tool-card p {
+  font-size: 13.8px;
+  color: var(--text-mute);
+  margin: 0 0 16px 0;
+  line-height: 1.55;
+}
+
+.tool-card-cta {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.overview-lower {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+}
+
+.panel {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-card);
+  padding: 24px 26px;
+}
+
+.howto-panel h4, .disclaimer-panel h4 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 14px 0;
+  color: var(--ink);
+}
+
+.howto-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-mute);
+  font-size: 13.8px;
+  line-height: 1.7;
+}
+
+.howto-list li { margin-bottom: 8px; }
+.howto-list strong { color: var(--text-main); }
+
+.disclaimer-panel {
+  background: var(--amber-tint);
+  border-color: #ECD9B8;
+}
+
+.disclaimer-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(201,122,31,0.14);
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.disclaimer-panel p {
+  font-size: 13.5px;
+  color: #6B4A1E;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---------- Tool layout (shared) ---------- */
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.panel-head { margin-bottom: 18px; }
+
+.panel-head h3 {
+  font-family: var(--font-display);
+  font-size: 18.5px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  color: var(--ink);
+}
+
+.panel-head p {
+  font-size: 13.5px;
+  color: var(--text-mute);
+  margin: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 7px;
+  margin-top: 16px;
+}
+
+.field-label:first-of-type { margin-top: 0; }
+
+.field-textarea, .field-input {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-s);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text-main);
+  background: var(--paper);
+  resize: vertical;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.field-textarea::placeholder, .field-input::placeholder {
+  color: var(--text-faint);
+}
+
+.field-textarea:focus, .field-input:focus {
+  border-color: var(--blue);
+  background: var(--white);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.field-col { min-width: 0; }
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  color: var(--text-mute);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  transition: all 0.15s ease;
+}
+
+.chip:hover { border-color: #C7C1B2; }
+
+.chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--white);
+}
+
+.primary-btn {
+  width: 100%;
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-s);
+  padding: 13px 18px;
+  font-size: 14.5px;
+  font-weight: 600;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.primary-btn:hover { background: var(--blue-deep); }
+.primary-btn:active { transform: scale(0.99); }
+
+.primary-btn:disabled {
+  background: #AEB6C4;
+  cursor: not-allowed;
+}
+
+/* ---------- Output panel ---------- */
+.output-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.output-letterhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper-dim);
+}
+
+.output-letterhead span:first-child {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mono-meta {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.output-body {
+  flex: 1;
+  padding: 24px 26px;
+  overflow-y: auto;
+}
+
+.output-placeholder {
+  color: var(--text-faint);
+  font-size: 13.8px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.output-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ghost-btn {
+  background: var(--white);
+  border: 1.5px solid var(--line);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: var(--radius-s);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ghost-btn:hover { border-color: var(--blue); color: var(--blue-deep); background: var(--blue-tint); }
+
+/* Generated content typography inside output */
+.gen-email p { font-size: 14px; line-height: 1.7; margin: 0 0 14px 0; color: var(--text-main); }
+.gen-email .gen-signoff { margin-bottom: 0; }
+
+.gen-section { margin-bottom: 20px; }
+.gen-section:last-child { margin-bottom: 0; }
+
+.gen-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-bottom: 10px;
+}
+
+.gen-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-blue { background: var(--blue); }
+.dot-mint { background: var(--mint); }
+.dot-amber { background: var(--amber); }
+
+.gen-section ul { margin: 0; padding-left: 0; list-style: none; }
+
+.gen-section li {
+  font-size: 14px;
+  color: var(--text-main);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.gen-section li:last-child { border-bottom: none; }
+
+.li-bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.deadline-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--amber-tint);
+  color: #8A5613;
+  padding: 2px 8px;
+  border-radius: 5px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.gen-summary-lead {
+  font-size: 14px;
+  color: var(--text-mute);
+  line-height: 1.65;
+  margin: 0 0 22px 0;
+  padding-bottom: 18px;
+  border-bottom: 1px dashed var(--line);
+}
+
+/* Plan output */
+.plan-block { margin-bottom: 22px; }
+.plan-block:last-child { margin-bottom: 0; }
+
+.plan-block-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.plan-day-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.task-row:last-child { border-bottom: none; }
+
+.task-priority {
+  flex-shrink: 0;
+  width: 30px;
+  height: 22px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.priority-high { background: #FBE5E1; color: #B3441F; }
+.priority-med  { background: var(--amber-tint); color: #8A5613; }
+.priority-low  { background: var(--line-soft); color: var(--text-mute); }
+
+.task-text { flex: 1; font-size: 14px; color: var(--text-main); line-height: 1.5; }
+.task-time { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-faint); white-space: nowrap; margin-top: 2px; }
+
+/* ---------- About ---------- */
+.about-panel h3 {
+  font-family: var(--font-display);
+  font-size: 21px;
+  margin: 0 0 12px 0;
+}
+.about-panel h4 {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  margin: 24px 0 10px 0;
+}
+.about-panel p, .about-list {
+  font-size: 14px;
+  color: var(--text-mute);
+  line-height: 1.7;
+}
+.about-list { padding-left: 20px; }
+.about-list li { margin-bottom: 8px; }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  padding: 18px 36px 28px 36px;
+  font-size: 12px;
+  color: var(--text-faint);
+  display: flex;
+  gap: 8px;
+}
+.footer-dot { opacity: 0.6; }
+
+/* ===========================================================
+   Responsive
+=========================================================== */
+@media (max-width: 1080px) {
+  .overview-grid { grid-template-columns: 1fr 1fr; }
+  .tool-grid { grid-template-columns: 1fr; }
+  .overview-lower { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    width: 260px;
+  }
+  .sidebar.is-open { transform: translateX(0); box-shadow: var(--shadow-pop); }
+  .sidebar-close { display: flex; }
+
+  .sidebar-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(17,21,28,0.45);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .sidebar-scrim.is-visible { opacity: 1; pointer-events: auto; }
+
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--ink);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .mobile-wordmark {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 16.5px;
+    color: #F4F2EC;
+  }
+
+  .mobile-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(150deg, var(--amber), #A8631A);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 22px 18px 14px 18px;
+  }
+
+  .clock-chip { align-items: flex-start; }
+
+  .view { padding: 6px 18px 32px 18px; }
+
+  .overview-grid { grid-template-columns: 1fr; }
+
+  .field-row { grid-template-columns: 1fr; }
+
+  .site-footer { flex-direction: column; gap: 2px; padding: 14px 18px 24px 18px; }
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: #D8DAE0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.08); }
+
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Mobile top bar -->
+  <header class="mobile-bar">
+    <button class="icon-btn" id="menuToggle" aria-label="Open menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mobile-wordmark">Deskwork</div>
+    <div class="mobile-avatar">LM</div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="wordmark">
+        <span class="wordmark-mark">D</span>
+        <span class="wordmark-text">Deskwork</span>
+      </div>
+      <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Close menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <nav class="nav-group">
+      <p class="nav-label">Workspace</p>
+      <button class="nav-item is-active" data-view="overview">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="12" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="16" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" data-view="email">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l7.4 5.6a1.5 1.5 0 0 0 1.8 0L20.5 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Email Generator
+      </button>
+      <button class="nav-item" data-view="notes">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l5 5v11.5A1.5 1.5 0 0 1 18.5 21h-13A1.5 1.5 0 0 1 4 19.5V4.5A1.5 1.5 0 0 1 5.5 3z" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 3v4.5a1 1 0 0 0 1 1H20" stroke="currentColor" stroke-width="1.8"/><path d="M8 13h8M8 16.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Notes Summarizer
+      </button>
+      <button class="nav-item" data-view="planner">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4.5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9.5h18M8 3v3.5M16 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="14" r="1.1" fill="currentColor"/><circle cx="12" cy="14" r="1.1" fill="currentColor"/><circle cx="16" cy="14" r="1.1" fill="currentColor"/></svg>
+        Task Planner
+      </button>
+    </nav>
+
+    <nav class="nav-group">
+      <p class="nav-label">General</p>
+      <button class="nav-item" data-view="about">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5.5M12 7.8v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        About &amp; AI use
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar">LM</div>
+        <div class="user-meta">
+          <span class="user-name">Luvuyo M.</span>
+          <span class="user-role">Loans Consultant</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-scrim" id="sidebarScrim"></div>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-heading">
+        <h1 id="viewTitle">Overview</h1>
+        <p id="viewSubtitle">A quick look at your workspace today.</p>
+      </div>
+      <div class="topbar-meta">
+        <div class="clock-chip">
+          <span id="clockTime">--:--</span>
+          <span class="clock-date" id="clockDate">—</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="view is-active" id="view-overview">
+      <div class="overview-grid">
+        <article class="tool-card" data-go="email">
+          <div class="tool-card-icon icon-tint-a">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l7.4 5.6a1.5 1.5 0 0 0 1.8 0L20.5 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Smart Email Generator</h3>
+          <p>Turn a rough idea into a polished, ready-to-send email — formal, friendly, or persuasive.</p>
+          <span class="tool-card-cta">Open tool →</span>
+        </article>
+
+        <article class="tool-card" data-go="notes">
+          <div class="tool-card-icon icon-tint-b">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l5 5v11.5A1.5 1.5 0 0 1 18.5 21h-13A1.5 1.5 0 0 1 4 19.5V4.5A1.5 1.5 0 0 1 5.5 3z" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 3v4.5a1 1 0 0 0 1 1H20" stroke="currentColor" stroke-width="1.8"/><path d="M8 13h8M8 16.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Meeting Notes Summarizer</h3>
+          <p>Paste in messy notes and get a clean summary with decisions, action items, and deadlines.</p>
+          <span class="tool-card-cta">Open tool →</span>
+        </article>
+
+        <article class="tool-card" data-go="planner">
+          <div class="tool-card-icon icon-tint-c">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="4.5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9.5h18M8 3v3.5M16 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="14" r="1.1" fill="currentColor"/><circle cx="12" cy="14" r="1.1" fill="currentColor"/><circle cx="16" cy="14" r="1.1" fill="currentColor"/></svg>
+          </div>
+          <h3>AI Task Planner</h3>
+          <p>List what's on your plate and get a prioritized daily or weekly schedule back.</p>
+          <span class="tool-card-cta">Open tool →</span>
+        </article>
+      </div>
+
+      <div class="overview-lower">
+        <div class="panel howto-panel">
+          <h4>How Deskwork fits into your day</h4>
+          <ol class="howto-list">
+            <li><strong>Draft, don't write from scratch.</strong> Use the Email Generator for client follow-ups, internal notes, or proposals — pick a tone, get a draft, edit to taste.</li>
+            <li><strong>Close the loop on meetings.</strong> Drop your raw notes into the Summarizer right after a call so action items don't get lost.</li>
+            <li><strong>Plan before the day plans you.</strong> List today's or this week's tasks in the Planner and get a realistic, prioritized order.</li>
+          </ol>
+        </div>
+        <div class="panel disclaimer-panel">
+          <div class="disclaimer-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16.5H3L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.2M12 17.2v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <h4>Responsible use of AI</h4>
+          <p>Every draft on this site is a starting point, not a finished product. Outputs can be incomplete, generic, or factually off — read everything before you send, file, or act on it. Deskwork doesn't store your input anywhere or send it to a third party; all generation happens right in your browser.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- EMAIL GENERATOR -->
+    <section class="view" id="view-email">
+      <div class="tool-grid">
+        <div class="panel input-panel">
+          <div class="panel-head">
+            <h3>What's the email about?</h3>
+            <p>Give it the gist — names, context, what you need. The more specific, the better the draft.</p>
+          </div>
+
+          <label class="field-label" for="emailPurpose">Purpose / key points</label>
+          <textarea id="emailPurpose" class="field-textarea" rows="6" placeholder="e.g. Follow up with a client who hasn't submitted their loan documents yet. Mention the deadline is Friday and offer to help if they're stuck."></textarea>
+
+          <div class="field-row">
+            <div class="field-col">
+              <label class="field-label" for="emailRecipient">Recipient (optional)</label>
+              <input id="emailRecipient" class="field-input" type="text" placeholder="e.g. Mr. Dlamini">
+            </div>
+            <div class="field-col">
+              <label class="field-label" for="emailSender">Your name (optional)</label>
+              <input id="emailSender" class="field-input" type="text" placeholder="e.g. Luvuyo">
+            </div>
+          </div>
+
+          <label class="field-label">Tone</label>
+          <div class="chip-row" id="toneChips">
+            <button class="chip is-active" data-tone="formal">Formal</button>
+            <button class="chip" data-tone="friendly">Friendly</button>
+            <button class="chip" data-tone="persuasive">Persuasive</button>
+          </div>
+
+          <button class="primary-btn" id="generateEmailBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.6L19 10l-5.2 1.7L12 17l-1.8-5.3L5 10l5.2-1.4L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            Generate email
+          </button>
+        </div>
+
+        <div class="panel output-panel">
+          <div class="output-letterhead">
+            <span>Drafted by Deskwork</span>
+            <span class="mono-meta" id="emailTimestamp">—</span>
+          </div>
+          <div class="output-body" id="emailOutput">
+            <p class="output-placeholder">Your generated email will appear here. Fill in the details on the left and click "Generate email."</p>
+          </div>
+          <div class="output-actions" id="emailActions" hidden>
+            <button class="ghost-btn" id="copyEmailBtn">Copy text</button>
+            <button class="ghost-btn" id="regenEmailBtn">Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTES SUMMARIZER -->
+    <section class="view" id="view-notes">
+      <div class="tool-grid">
+        <div class="panel input-panel">
+          <div class="panel-head">
+            <h3>Paste your meeting notes</h3>
+            <p>Rough, unedited notes work fine — bullet points, run-on sentences, whatever you typed during the call.</p>
+          </div>
+
+          <label class="field-label" for="notesInput">Raw notes</label>
+          <textarea id="notesInput" class="field-textarea" rows="12" placeholder="e.g. Met with the Ballito branch team. Discussed Q3 targets, agreed to push the new referral form live by next Wednesday. Sandile to follow up with compliance on the disclosure wording before then. Need to decide on the new commission split — revisit in two weeks. Reminder: send the updated rate sheet to all consultants by Friday."></textarea>
+
+          <button class="primary-btn" id="summarizeBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.6L19 10l-5.2 1.7L12 17l-1.8-5.3L5 10l5.2-1.4L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            Summarize notes
+          </button>
+        </div>
+
+        <div class="panel output-panel">
+          <div class="output-letterhead">
+            <span>Summary by Deskwork</span>
+            <span class="mono-meta" id="notesTimestamp">—</span>
+          </div>
+          <div class="output-body" id="notesOutput">
+            <p class="output-placeholder">Your summary, action items, decisions, and deadlines will appear here.</p>
+          </div>
+          <div class="output-actions" id="notesActions" hidden>
+            <button class="ghost-btn" id="copyNotesBtn">Copy text</button>
+            <button class="ghost-btn" id="regenNotesBtn">Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASK PLANNER -->
+    <section class="view" id="view-planner">
+      <div class="tool-grid">
+        <div class="panel input-panel">
+          <div class="panel-head">
+            <h3>What's on your list?</h3>
+            <p>One task per line. Add roughly how long each one takes if you can — it helps with the ordering.</p>
+          </div>
+
+          <label class="field-label" for="taskInput">Tasks</label>
+          <textarea id="taskInput" class="field-textarea" rows="8" placeholder="e.g.
+Call back 3 clients about overdue documents
+Finish APM2611 assignment (due Sunday)
+Prep rate sheet for Friday meeting
+Reply to HR about leave form
+Gym in the evening"></textarea>
+
+          <label class="field-label">Plan for</label>
+          <div class="chip-row" id="spanChips">
+            <button class="chip is-active" data-span="day">Today</button>
+            <button class="chip" data-span="week">This week</button>
+          </div>
+
+          <button class="primary-btn" id="planBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.6L19 10l-5.2 1.7L12 17l-1.8-5.3L5 10l5.2-1.4L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            Build my schedule
+          </button>
+        </div>
+
+        <div class="panel output-panel">
+          <div class="output-letterhead">
+            <span>Schedule by Deskwork</span>
+            <span class="mono-meta" id="planTimestamp">—</span>
+          </div>
+          <div class="output-body" id="planOutput">
+            <p class="output-placeholder">Your prioritized schedule will appear here, grouped by priority and time of day.</p>
+          </div>
+          <div class="output-actions" id="planActions" hidden>
+            <button class="ghost-btn" id="copyPlanBtn">Copy text</button>
+            <button class="ghost-btn" id="regenPlanBtn">Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="view" id="view-about">
+      <div class="panel about-panel">
+        <h3>About Deskwork</h3>
+        <p>Deskwork bundles three everyday writing-and-planning tasks into one workspace: drafting emails, summarizing meeting notes, and building a prioritized schedule. It's built as a static site — every "AI" output is generated by rule-based logic running directly in your browser, styled to read like a clean first draft you'd get from an assistant.</p>
+
+        <h4>How this differs from a connected AI model</h4>
+        <p>This demo doesn't call an external AI API, so it won't understand nuance, context outside what you type, or anything outside its templates the way a model like Claude would. Treat every output as a structured rough draft, not a finished, fact-checked piece of writing.</p>
+
+        <h4>Responsible AI use disclaimer</h4>
+        <ul class="about-list">
+          <li>Outputs are generated automatically and may be incomplete, generic, or contain mistakes — always review before sending, filing, or acting on them.</li>
+          <li>Don't paste in sensitive personal information (ID numbers, banking details, medical information) — even though this demo processes everything locally, it's good practice for any AI tool.</li>
+          <li>This tool supports your judgment; it doesn't replace it. Final wording, decisions, and priorities are yours to confirm.</li>
+          <li>No data entered here is stored, logged, or shared — input lives only in your browser tab for this session.</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <span>Deskwork — built as a portfolio / demo project.</span>
+      <span class="footer-dot">·</span>
+      <span>All processing happens locally in your browser.</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+/* ===========================================================
+   Deskwork — app logic
+   All "AI" generation here is rule-based and runs entirely
+   client-side. No data leaves the browser, no API calls made.
+=========================================================== */
+
+(function () {
+  "use strict";
+
+  /* ---------------- Navigation ---------------- */
+  const navItems = document.querySelectorAll(".nav-item");
+  const views = document.querySelectorAll(".view");
+  const viewTitle = document.getElementById("viewTitle");
+  const viewSubtitle = document.getElementById("viewSubtitle");
+  const cardLinks = document.querySelectorAll("[data-go]");
+
+  const viewMeta = {
+    overview: { title: "Overview", sub: "A quick look at your workspace today." },
+    email:    { title: "Smart Email Generator", sub: "Describe what you need to say — pick a tone — get a draft." },
+    notes:    { title: "Meeting Notes Summarizer", sub: "Paste your notes and get a clean summary back." },
+    planner:  { title: "AI Task Planner", sub: "List your tasks and get a prioritized schedule." },
+    about:    { title: "About & AI use", sub: "How Deskwork works and how to use it responsibly." },
+  };
+
+  function setView(name) {
+    views.forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
+    navItems.forEach((n) => n.classList.toggle("is-active", n.dataset.view === name));
+    if (viewMeta[name]) {
+      viewTitle.textContent = viewMeta[name].title;
+      viewSubtitle.textContent = viewMeta[name].sub;
+    }
+    closeSidebar();
+    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  }
+
+  navItems.forEach((btn) => {
+    btn.addEventListener("click", () => setView(btn.dataset.view));
+  });
+
+  cardLinks.forEach((el) => {
+    el.addEventListener("click", () => setView(el.dataset.go));
+  });
+
+  /* ---------------- Mobile sidebar ---------------- */
+  const sidebar = document.getElementById("sidebar");
+  const scrim = document.getElementById("sidebarScrim");
+
+  function openSidebar() {
+    sidebar.classList.add("is-open");
+    scrim.classList.add("is-visible");
+  }
+  function closeSidebar() {
+    sidebar.classList.remove("is-open");
+    scrim.classList.remove("is-visible");
+  }
+
+  document.getElementById("menuToggle").addEventListener("click", openSidebar);
+  document.getElementById("sidebarClose").addEventListener("click", closeSidebar);
+  scrim.addEventListener("click", closeSidebar);
+
+  /* ---------------- Clock ---------------- */
+  const clockTime = document.getElementById("clockTime");
+  const clockDate = document.getElementById("clockDate");
+
+  function tickClock() {
+    const now = new Date();
+    clockTime.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    clockDate.textContent = now.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  }
+  tickClock();
+  setInterval(tickClock, 15000);
+
+  function stamp() {
+    const now = new Date();
+    return now.toLocaleDateString([], { month: "short", day: "numeric" }) + " · " +
+           now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  /* ===========================================================
+     TOOL 1 — Smart Email Generator
+  =========================================================== */
+  let currentTone = "formal";
+  const toneChips = document.querySelectorAll("#toneChips .chip");
+  toneChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      toneChips.forEach((c) => c.classList.remove("is-active"));
+      chip.classList.add("is-active");
+      currentTone = chip.dataset.tone;
+    });
+  });
+
+  const TONE_OPENERS = {
+    formal: ["I hope this email finds you well.", "I am writing to follow up on the matter below."],
+    friendly: ["Hope you're doing well!", "Hope your week's going smoothly so far!"],
+    persuasive: ["I wanted to reach out about something I think is worth a few minutes of your time.", "I'm following up because I genuinely believe this is worth prioritizing."],
+  };
+
+  const TONE_CLOSERS = {
+    formal: ["Please let me know if you require any further information.", "I look forward to your response at your earliest convenience."],
+    friendly: ["Let me know if you have any questions — happy to chat any time!", "Just shout if you need anything else from me!"],
+    persuasive: ["I'd really appreciate the chance to discuss this further — could we find a few minutes this week?", "Let me know your thoughts — I'm confident this is the right next step."],
+  };
+
+  const TONE_SIGNOFF = {
+    formal: "Kind regards,",
+    friendly: "Best,",
+    persuasive: "Looking forward to hearing from you,",
+  };
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function buildSubject(purpose) {
+    const cleaned = purpose.trim().split(/[.\n]/)[0];
+    const words = cleaned.split(/\s+/).filter(Boolean).slice(0, 7).join(" ");
+    if (!words) return "Quick note";
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
+  function expandPurposeToBody(purpose, tone) {
+    // Split purpose into rough clauses and turn them into 2-3 short paragraphs
+    const sentences = purpose
+      .replace(/\n+/g, ". ")
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (sentences.length === 0) {
+      return ["I wanted to touch base regarding the matter we discussed."];
+    }
+
+    const paragraphs = [];
+    const lead = sentences.slice(0, 2).join(" ");
+    paragraphs.push(lead);
+
+    if (sentences.length > 2) {
+      paragraphs.push(sentences.slice(2).join(" "));
+    }
+
+    if (tone === "persuasive") {
+      paragraphs.push("I believe this is a small step that could make a meaningful difference, and I'd be glad to work through any details together.");
+    } else if (tone === "friendly") {
+      paragraphs.push("No rush at all — just wanted to put this on your radar.");
+    }
+
+    return paragraphs;
+  }
+
+  function generateEmail() {
+    const purpose = document.getElementById("emailPurpose").value.trim();
+    const recipient = document.getElementById("emailRecipient").value.trim();
+    const sender = document.getElementById("emailSender").value.trim();
+    const output = document.getElementById("emailOutput");
+    const actions = document.getElementById("emailActions");
+
+    if (!purpose) {
+      output.innerHTML = '<p class="output-placeholder">Add a few details about what the email needs to cover, then generate again.</p>';
+      actions.hidden = true;
+      return;
+    }
+
+    const greetingName = recipient || (currentTone === "formal" ? "there" : "there");
+    const greeting = currentTone === "formal"
+      ? `Dear ${recipient || "Sir/Madam"},`
+      : `Hi ${recipient || "there"},`;
+
+    const subject = buildSubject(purpose);
+    const opener = pick(TONE_OPENERS[currentTone]);
+    const bodyParas = expandPurposeToBody(purpose, currentTone);
+    const closer = pick(TONE_CLOSERS[currentTone]);
+    const signoff = TONE_SIGNOFF[currentTone];
+    const signature = sender || "[Your name]";
+
+    let html = `<div class="gen-email">`;
+    html += `<p><strong>Subject:</strong> ${escapeHtml(subject)}</p>`;
+    html += `<p>${escapeHtml(greeting)}</p>`;
+    html += `<p>${escapeHtml(opener)}</p>`;
+    bodyParas.forEach((p) => {
+      html += `<p>${escapeHtml(p)}</p>`;
+    });
+    html += `<p>${escapeHtml(closer)}</p>`;
+    html += `<p class="gen-signoff">${escapeHtml(signoff)}<br>${escapeHtml(signature)}</p>`;
+    html += `</div>`;
+
+    output.innerHTML = html;
+    actions.hidden = false;
+    document.getElementById("emailTimestamp").textContent = stamp();
+  }
+
+  document.getElementById("generateEmailBtn").addEventListener("click", generateEmail);
+  document.getElementById("regenEmailBtn").addEventListener("click", generateEmail);
+  document.getElementById("copyEmailBtn").addEventListener("click", () => copyOutput("emailOutput"));
+
+  /* ===========================================================
+     TOOL 2 — Meeting Notes Summarizer
+  =========================================================== */
+  const DEADLINE_WORDS = /\b(by|before|due|deadline)\b/i;
+  const DAY_WORDS = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|next week|this week|end of day|eod|end of month)\b/i;
+  const ACTION_WORDS = /\b(will|need to|needs to|to do|should|must|going to|follow up|send|prepare|review|schedule|finalize|finalise|update|contact|call|email|complete|submit)\b/i;
+  const DECISION_WORDS = /\b(agreed|decided|approved|confirmed|finalized|finalised|concluded|resolved|will go with|chose|selected)\b/i;
+
+  function extractDeadline(sentence) {
+    const match = sentence.match(DAY_WORDS);
+    return match ? match[0].replace(/\b\w/g, (c) => c.toUpperCase()) : null;
+  }
+
+  function summarizeNotes() {
+    const raw = document.getElementById("notesInput").value.trim();
+    const output = document.getElementById("notesOutput");
+    const actions = document.getElementById("notesActions");
+
+    if (!raw) {
+      output.innerHTML = '<p class="output-placeholder">Paste in some notes first, then summarize.</p>';
+      actions.hidden = true;
+      return;
+    }
+
+    const sentences = raw
+      .replace(/\n+/g, ". ")
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 3);
+
+    const actionItems = [];
+    const decisions = [];
+    const deadlineSentences = [];
+    const general = [];
+
+    sentences.forEach((s) => {
+      const hasDeadline = DEADLINE_WORDS.test(s) || DAY_WORDS.test(s);
+      const isDecision = DECISION_WORDS.test(s);
+      const isAction = ACTION_WORDS.test(s);
+
+      if (isDecision) decisions.push(s);
+      else if (isAction) actionItems.push(s);
+      else general.push(s);
+
+      if (hasDeadline) deadlineSentences.push(s);
+    });
+
+    // Build a short summary lead from the first couple of general/topic sentences
+    const leadSource = general.length ? general : sentences;
+    const lead = leadSource.slice(0, 2).join(" ");
+
+    let html = "";
+    html += `<p class="gen-summary-lead">${escapeHtml(lead || "Notes processed below, organized by action items, decisions, and deadlines.")}</p>`;
+
+    html += `<div class="gen-section"><div class="gen-section-title"><span class="gen-dot dot-blue"></span>Action items</div><ul>`;
+    if (actionItems.length) {
+      actionItems.forEach((item) => {
+        const dl = extractDeadline(item);
+        html += `<li><span class="li-bullet"></span><span>${escapeHtml(item)}${dl ? `<span class="deadline-tag">${escapeHtml(dl)}</span>` : ""}</span></li>`;
+      });
+    } else {
+      html += `<li><span class="li-bullet"></span><span>No clear action items were detected — review the raw notes for anything implied but not stated directly.</span></li>`;
+    }
+    html += `</ul></div>`;
+
+    html += `<div class="gen-section"><div class="gen-section-title"><span class="gen-dot dot-mint"></span>Decisions</div><ul>`;
+    if (decisions.length) {
+      decisions.forEach((item) => {
+        html += `<li><span class="li-bullet"></span><span>${escapeHtml(item)}</span></li>`;
+      });
+    } else {
+      html += `<li><span class="li-bullet"></span><span>No explicit decisions were detected in this set of notes.</span></li>`;
+    }
+    html += `</ul></div>`;
+
+    html += `<div class="gen-section"><div class="gen-section-title"><span class="gen-dot dot-amber"></span>Deadlines mentioned</div><ul>`;
+    if (deadlineSentences.length) {
+      deadlineSentences.forEach((item) => {
+        const dl = extractDeadline(item);
+        html += `<li><span class="li-bullet"></span><span>${escapeHtml(item)}${dl ? `<span class="deadline-tag">${escapeHtml(dl)}</span>` : ""}</span></li>`;
+      });
+    } else {
+      html += `<li><span class="li-bullet"></span><span>No specific dates or deadlines were mentioned.</span></li>`;
+    }
+    html += `</ul></div>`;
+
+    output.innerHTML = html;
+    actions.hidden = false;
+    document.getElementById("notesTimestamp").textContent = stamp();
+  }
+
+  document.getElementById("summarizeBtn").addEventListener("click", summarizeNotes);
+  document.getElementById("regenNotesBtn").addEventListener("click", summarizeNotes);
+  document.getElementById("copyNotesBtn").addEventListener("click", () => copyOutput("notesOutput"));
+
+  /* ===========================================================
+     TOOL 3 — AI Task Planner / Scheduler
+  =========================================================== */
+  let currentSpan = "day";
+  const spanChips = document.querySelectorAll("#spanChips .chip");
+  spanChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      spanChips.forEach((c) => c.classList.remove("is-active"));
+      chip.classList.add("is-active");
+      currentSpan = chip.dataset.span;
+    });
+  });
+
+  const HIGH_PRIORITY_WORDS = /\b(urgent|asap|due|deadline|overdue|important|critical|client|today|now)\b/i;
+  const MED_PRIORITY_WORDS = /\b(this week|soon|follow up|meeting|call|prepare|review)\b/i;
+
+  function classifyPriority(task) {
+    if (HIGH_PRIORITY_WORDS.test(task)) return "high";
+    if (MED_PRIORITY_WORDS.test(task)) return "med";
+    return "low";
+  }
+
+  function estimateDuration(task) {
+    const match = task.match(/(\d+)\s*(min|minute|hr|hour)/i);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      const unit = match[2].toLowerCase().startsWith("h") ? "hr" : "min";
+      return unit === "hr" ? n * 60 : n;
+    }
+    // rough heuristic by task type
+    if (/call|email|reply|message/i.test(task)) return 20;
+    if (/meeting|review|prepare|finalize|finalise|assignment|report/i.test(task)) return 60;
+    if (/gym|exercise|workout/i.test(task)) return 45;
+    return 30;
+  }
+
+  function cleanTaskText(task) {
+    return task.replace(/\(\s*\d+\s*(min|minute|hr|hour)[^)]*\)/i, "").trim();
+  }
+
+  function formatMinutes(total) {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h && m) return `${h}h ${m}m`;
+    if (h) return `${h}h`;
+    return `${m}m`;
+  }
+
+  function buildDaySchedule(tasks, startHour) {
+    const sorted = [...tasks].sort((a, b) => {
+      const order = { high: 0, med: 1, low: 2 };
+      return order[a.priority] - order[b.priority];
+    });
+
+    let cursorMinutes = startHour * 60;
+    return sorted.map((t) => {
+      const startH = Math.floor(cursorMinutes / 60);
+      const startM = cursorMinutes % 60;
+      const time = `${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}`;
+      cursorMinutes += t.duration;
+      return { ...t, time };
+    });
+  }
+
+  function planTasks() {
+    const raw = document.getElementById("taskInput").value.trim();
+    const output = document.getElementById("planOutput");
+    const actions = document.getElementById("planActions");
+
+    if (!raw) {
+      output.innerHTML = '<p class="output-placeholder">List a few tasks first, then build your schedule.</p>';
+      actions.hidden = true;
+      return;
+    }
+
+    const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+    const tasks = lines.map((line) => ({
+      text: cleanTaskText(line),
+      priority: classifyPriority(line),
+      duration: estimateDuration(line),
+    }));
+
+    let html = "";
+
+    if (currentSpan === "day") {
+      const scheduled = buildDaySchedule(tasks, 8); // start at 08:00
+      html += `<div class="plan-block">`;
+      html += `<div class="plan-block-title">Today<span class="plan-day-tag">${tasks.length} task${tasks.length === 1 ? "" : "s"} · starting 08:00</span></div>`;
+      scheduled.forEach((t) => {
+        html += taskRowHtml(t);
+      });
+      html += `</div>`;
+    } else {
+      // distribute across weekdays, high priority first, spread roughly evenly
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      const order = { high: 0, med: 1, low: 2 };
+      const sorted = [...tasks].sort((a, b) => order[a.priority] - order[b.priority]);
+
+      const buckets = days.map(() => []);
+      sorted.forEach((t, i) => {
+        buckets[i % days.length].push(t);
+      });
+
+      days.forEach((day, i) => {
+        if (!buckets[i].length) return;
+        const scheduled = buildDaySchedule(buckets[i], 8);
+        html += `<div class="plan-block">`;
+        html += `<div class="plan-block-title">${day}<span class="plan-day-tag">${buckets[i].length} task${buckets[i].length === 1 ? "" : "s"}</span></div>`;
+        scheduled.forEach((t) => {
+          html += taskRowHtml(t);
+        });
+        html += `</div>`;
+      });
+    }
+
+    output.innerHTML = html;
+    actions.hidden = false;
+    document.getElementById("planTimestamp").textContent = stamp();
+  }
+
+  function taskRowHtml(t) {
+    const label = t.priority === "high" ? "HI" : t.priority === "med" ? "MED" : "LOW";
+    const cls = t.priority === "high" ? "priority-high" : t.priority === "med" ? "priority-med" : "priority-low";
+    return `<div class="task-row">
+      <span class="task-priority ${cls}">${label}</span>
+      <span class="task-text">${escapeHtml(t.text)}</span>
+      <span class="task-time">${t.time} · ${formatMinutes(t.duration)}</span>
+    </div>`;
+  }
+
+  document.getElementById("planBtn").addEventListener("click", planTasks);
+  document.getElementById("regenPlanBtn").addEventListener("click", planTasks);
+  document.getElementById("copyPlanBtn").addEventListener("click", () => copyOutput("planOutput"));
+
+  /* ---------------- Shared: copy to clipboard ---------------- */
+  function copyOutput(elId) {
+    const el = document.getElementById(elId);
+    const text = el.innerText;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = elId === "emailOutput" ? document.getElementById("copyEmailBtn")
+                : elId === "notesOutput" ? document.getElementById("copyNotesBtn")
+                : document.getElementById("copyPlanBtn");
+      const original = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }).catch(() => {
+      /* clipboard API unavailable — fail silently, no console noise needed for end users */
+    });
+  }
+})();
+
+</script>
+</body>
+</html>
